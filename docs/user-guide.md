@@ -4,43 +4,43 @@ sidebar_position: 2
 
 # Nullness 用户指南
 
-在 Java 代码中，表达式是否可能求值为 `null` 通常只用自然语言文档记录（如果有的话）。JSpecify 的 nullness annotation 让程序员能够以一致且定义明确的方式表达 Java 代码的 nullness。
+Java 代码里，一个表达式会不会是 `null`，通常只靠文档（如果有的话）。JSpecify 的 nullness annotation 让你能用代码本身表达清楚。
 
-JSpecify 定义了描述 Java 类型是否包含 `null` 值的 annotation。这类 annotation 对以下场景很有用：
+JSpecify 定义了一套 annotation，描述 Java 类型是否包含 `null` 值：
 
-*   阅读代码的程序员，
-*   帮助开发者避免 `NullPointerException` 的工具，
-*   执行运行时检查和测试生成的工具，以及
-*   文档系统。
+*   读代码的人一目了然
+*   工具帮你抓 `NullPointerException`
+*   运行时检查、测试生成
+*   文档系统
 
 ## Java 变量是引用
 
-在 Java 中，所有非原始类型变量要么是 `null`，要么是对对象的引用。我们通常认为 `String x` 这样的声明意味着 `x` 是一个 `String`，但实际上它意味着 `x` *要么*是 `null`，*要么*是对实际 `String` 对象的引用。JSpecify 让你能够清楚地表达你是否真的意味着前者，还是你真的意味着 `x` 一定是对 `String` 对象的引用而不是 `null`。
+Java 里，非原始类型的变量要么是 `null`，要么指向一个对象。`String x` 看起来像"x 是个 String"，其实是"x 要么是 `null`，要么指向一个 String 对象"。JSpecify 让你把这话说清楚。
 
 ## 类型和 nullness
 
-JSpecify 提供了规则来确定每个类型使用具有四种 nullness 中的哪一种：
+JSpecify 把类型使用分成四种 nullness：
 
-1.  它可以包含 `null`（它是"nullable"）。
-2.  它不会包含 `null`（它是"non-nullable"）。
-3.  仅对于类型变量：如果替换它的类型参数包含 `null`，则它也包含 `null`（它具有"parametric nullness"）。
-4.  我们不知道它是否可以包含 `null`（它具有"unspecified nullness"）。这相当于没有 JSpecify annotation 时的状态。
+1.  可以是 `null`（nullable）
+2.  不能是 `null`（non-nullable）
+3.  类型变量专属：跟着类型参数走（parametric nullness）
+4.  不知道（unspecified nullness）——就是没有 JSpecify annotation 时的状态
 
-对于给定的变量 `x`，如果 `x` 可以是 `null`，那么 `x.getClass()` 是不安全的，因为它可能产生 `NullPointerException`。如果 `x` 不能是 `null`，`x.getClass()` 永远不会产生 `NullPointerException`。如果我们不知道 `x` 是否可以是 `null`，我们也不知道 `x.getClass()` 是否安全（至少就 JSpecify 而言）。
+变量 `x` 可以是 `null`？那 `x.getClass()` 不安全，可能 `NullPointerException`。不能是 `null`？`x.getClass()` 永远安全。不知道？那就不知道。
 
-"不能是 `null`"的概念实际上应该带有一个脚注，说明"如果相关代码都不涉及 unspecified nullness"。例如，如果你有一些代码将具有 unspecified nullness 的类型传递给只接受 `@NonNull` 参数的方法，那么工具可能会允许它将可能为 `null` 的值传递给期望"不能是 `null`"参数的方法。
+"不能是 `null`"有个脚注：前提是相关代码都不涉及 unspecified nullness。比如你把 unspecified nullness 的类型传给只接受 `@NonNull` 参数的方法，工具可能就放过了本来有问题的值。
 
-有四个 JSpecify annotation 一起使用来指示所有类型使用的 nullness：
+四个 JSpecify annotation 配合使用：
 
-*   两个类型使用 annotation，指示特定类型使用是否包含 `null`：[`@Nullable` 和 `@NonNull`](#nullable-和-nonnull)
-*   一个作用域 annotation，让你在大多数情况下不必输入 `@NonNull`：[`@NullMarked`](#nullmarked)
-*   另一个作用域 annotation，撤销 `@NullMarked` 的效果，以便你可以增量采用 annotation：[`@NullUnmarked`](#nullunmarked)
+*   [`@Nullable` 和 `@NonNull`](#nullable-和-nonnull)：标注单个类型使用
+*   [`@NullMarked`](#nullmarked)：省得到处写 `@NonNull`
+*   [`@NullUnmarked`](#nullunmarked)：增量采用时取消 `@NullMarked`
 
 ## `@Nullable` 和 `@NonNull`
 
-当类型被 [`@Nullable`] annotation 标注时，意味着该类型的值可以是 `null`。`@Nullable String x` 意味着 `x` 可能是 `null`。使用这些值的代码必须能够处理 `null` 情况，并且可以将 `null` 赋给此类变量或将 `null` 传递给这些参数。
+当类型被 [`@Nullable`] 标注，意味着该类型的值可以是 `null`。`@Nullable String x` 就是说 `x` 可能是 `null`。用这些值的代码得能处理 `null` 情况，也可以把 `null` 赋给这类变量或传给这些参数。
 
-当类型被 [`@NonNull`] annotation 标注时，意味着该类型的任何值都不应该是 `null`。`@NonNull String x` 意味着 `x` 永远不应该是 `null`。使用这些值的代码可以假设它们不是 `null`，将 `null` 赋给这些值或将 `null` 传递给这些参数是个坏主意。（参见[下文](#nullmarked)了解如何在大多数情况下不必写出 `@NonNull`。）
+当类型被 [`@NonNull`] 标注，意味着该类型的任何值都不应该是 `null`。`@NonNull String x` 就是说 `x` 永远不应该是 `null`。用这些值的代码可以假设它们不是 `null`。把 `null` 赋给这些值或传给这些参数是个坏主意。（参见[下文](#nullmarked)了解怎么省得到处写 `@NonNull`。）
 
 ```java
 static @Nullable String emptyToNull(@NonNull String x) {
@@ -52,9 +52,9 @@ static @NonNull String nullToEmpty(@Nullable String x) {
 }
 ```
 
-在这个例子中，`emptyToNull` 的参数被 `@NonNull` 标注，所以它不能是 `null`；`emptyToNull(null)` 不是有效的方法调用。`emptyToNull` 方法的主体依赖于这个假设，并立即调用 `x.isEmpty()`，如果 `x` 实际上是 `null`，这会抛出 `NullPointerException`。相反，`emptyToNull` 可能返回 `null`，所以它的返回类型被 `@Nullable` 标注。
+这个例子里，`emptyToNull` 的参数被 `@NonNull` 标注，所以不能是 `null`；`emptyToNull(null)` 不是合法的方法调用。`emptyToNull` 的方法体依赖这个假设，上来就调 `x.isEmpty()`，如果 `x` 实际是 `null`，会抛 `NullPointerException`。反过来，`emptyToNull` 可能返回 `null`，所以返回类型用 `@Nullable` 标注。
 
-另一方面，`nullToEmpty` 承诺处理 `null` 参数，所以它的参数被 `@Nullable` 标注，表示 `nullToEmpty(null)` 是有效的方法调用。它的主体考虑了参数是 `null` 的情况，不会抛出 `NullPointerException`。它不能返回 `null`，所以它的返回类型被 `@NonNull` 标注。
+另一方面，`nullToEmpty` 承诺处理 `null` 参数，所以参数用 `@Nullable` 标注，表示 `nullToEmpty(null)` 是合法的方法调用。方法体考虑了参数是 `null` 的情况，不会抛 `NullPointerException`。它不能返回 `null`，所以返回类型用 `@NonNull` 标注。
 
 ```java
 void doSomething() {
@@ -66,9 +66,9 @@ void doSomething() {
 }
 ```
 
-工具可以使用 `@Nullable` 和 `@NonNull` annotation 来警告用户不安全的调用。
+工具可以用 `@Nullable` 和 `@NonNull` annotation 来警告用户不安全的调用。
 
-就 JSpecify 而言，`@NonNull String` 和 `@Nullable String` 是*不同的类型*。`@NonNull String` 类型的变量可以引用任何 `String` 对象。`@Nullable String` 类型的变量也可以，但它还可以是 `null`。这意味着 `@NonNull String` 是 `@Nullable String` 的*子类型*，就像 `Integer` 是 `Number` 的子类型一样。一种看待这个问题的方式是子类型缩小了可能值的范围。`Number` 变量可以从 `Integer` 赋值，但也可以从 `Long` 赋值。同时，`Integer` 变量不能从 `Number` 赋值（因为那个 `Number` 可能是 `Long` 或其他子类型）。同样，`@Nullable String` 可以从 `@NonNull String` 赋值，但 `@NonNull String` 不能从 `@Nullable String` 赋值（因为它可能是 `null`）。
+在 JSpecify 看来，`@NonNull String` 和 `@Nullable String` 是*不同的类型*。`@NonNull String` 类型的变量可以引用任何 `String` 对象。`@Nullable String` 类型的变量也可以，但还可以是 `null`。这意味着 `@NonNull String` 是 `@Nullable String` 的*子类型*，就像 `Integer` 是 `Number` 的子类型一样。可以这么想：子类型缩小了可能值的范围。`Number` 变量可以从 `Integer` 赋值，但也可以从 `Long` 赋值。同时，`Integer` 变量不能从 `Number` 赋值（因为那个 `Number` 可能是 `Long` 或其他子类型）。同样，`@Nullable String` 可以从 `@NonNull String` 赋值，但 `@NonNull String` 不能从 `@Nullable String` 赋值（因为它可能是 `null`）。
 
 ```java
 class Example {
@@ -98,11 +98,11 @@ class Unannotated {
 
 ## `@NullMarked`
 
-如果在 Java 代码中每个类型使用都必须用 `@Nullable` 或 `@NonNull` 标注以避免 unspecified nullness，那会很烦人（尤其是加上[泛型](#generics)后！）。
+如果在 Java 代码里每个类型使用都得用 `@Nullable` 或 `@NonNull` 标注以避免 unspecified nullness，那太烦人了（尤其是加上[泛型](#generics)后！）。
 
-所以 JSpecify 提供了 [`@NullMarked`] annotation。当你将 `@NullMarked` 应用于模块、包、类或方法时，意味着该作用域内未标注的类型被视为被 `@NonNull` 标注。（下面我们会看到[局部变量](#局部变量)和[类型变量](#声明泛型类型)有一些例外。）在 `@NullMarked` 覆盖的代码中，`String x` 与 `@NonNull String x` 含义相同。
+所以 JSpecify 提供了 [`@NullMarked`] annotation。把 `@NullMarked` 应用到模块、包、类或方法上，意味着该作用域内未标注的类型被视为被 `@NonNull` 标注。（下面我们会看到[局部变量](#局部变量)和[类型变量](#声明泛型类型)有一些例外。）在 `@NullMarked` 覆盖的代码里，`String x` 跟 `@NonNull String x` 一个意思。
 
-如果应用于模块，其作用域是模块中的所有代码。如果应用于包，其作用域是包中的所有代码。（注意包*不是*层次结构的；将 `@NullMarked` 应用于包 `com.foo` 不会使包 `com.foo.bar` 成为 `@NullMarked`。）如果应用于类、接口或方法，其作用域是该类、接口或方法中的所有代码。
+如果应用于模块，作用域是模块里的所有代码。如果应用于包，作用域是包里的所有代码。（注意包*不是*层次结构的；把 `@NullMarked` 应用到包 `com.foo` 不会让包 `com.foo.bar` 也变成 `@NullMarked`。）如果应用于类、接口或方法，作用域是该类、接口或方法里的所有代码。
 
 ```java
 @NullMarked
@@ -117,17 +117,17 @@ class Strings {
 }
 ```
 
-这是上面的例子，其中包含这些方法的类被 `@NullMarked` 标注。类型的 nullness 与之前相同：`emptyToNull` 不接受 `null` 参数，但可能返回 `null`；`nullToEmpty` 接受 `null` 参数，但不会返回 `null`。但我们能够用更少的 annotation 做到这一点。一般来说，使用 `@NullMarked` 会用更少的 annotation 给你正确的 nullness 语义。在 `@NullMarked` 代码中，你会习惯于将 `String` 这样的普通未标注类型视为对 `String` 对象的真实引用，永远不会是 `null`。
+这是上面的例子，方法的类被 `@NullMarked` 标注。类型的 nullness 跟之前一样：`emptyToNull` 不接受 `null` 参数，但可能返回 `null`；`nullToEmpty` 接受 `null` 参数，但不会返回 `null`。但我们用更少的 annotation 做到了。一般来说，用 `@NullMarked` 能用更少的 annotation 得到正确的 nullness 语义。在 `@NullMarked` 代码里，你会习惯把 `String` 这样的普通未标注类型当成对 `String` 对象的真实引用，永远不会是 `null`。
 
 如上所述，[局部变量](#局部变量)和[类型变量](#声明泛型类型)对这种解释有一些例外。
 
 ### `@NullUnmarked`
 
-如果你正在将 JSpecify annotation 应用于你的代码，你可能无法一次性全部标注。如果你现在可以将 `@NullMarked` 应用于部分代码，稍后再处理其余部分，这比等到有时间标注所有内容要好。但这意味着你可能需要 null-mark 一个模块、包或类，*除了某些类或方法*。为此，将 [`@NullUnmarked`] 应用于已经在 `@NullMarked` 上下文内的包、类或方法。`@NullUnmarked` 只是撤销周围 `@NullMarked` 的效果，使未标注的类型具有 unspecified nullness，除非它们被 `@Nullable` 或 `@NonNull` 标注，就像根本没有包围的 `@NullMarked` 一样。`@NullUnmarked` 作用域反过来可以包含嵌套的 `@NullMarked` 元素，使该更窄作用域内的大多数未标注类型使用成为 non-null。
+如果你正在把 JSpecify annotation 应用到代码里，可能没法一次性全部标注。如果现在能把 `@NullMarked` 应用到部分代码，以后再处理其余部分，那比等到有时间标注所有内容要好。但这意味着你可能需要 null-mark 一个模块、包或类，*除了某些类或方法*。为此，把 [`@NullUnmarked`] 应用到已经在 `@NullMarked` 上下文内的包、类或方法上。`@NullUnmarked` 就是撤销周围 `@NullMarked` 的效果，让未标注的类型具有 unspecified nullness，除非它们被 `@Nullable` 或 `@NonNull` 标注——就像根本没有包围的 `@NullMarked` 一样。`@NullUnmarked` 作用域反过来可以包含嵌套的 `@NullMarked` 元素，让那个更窄作用域里的大多数未标注类型使用变成 non-null。
 
 ## 局部变量
 
-`@Nullable` 和 `@NonNull` 不应用于局部变量——至少不是它们的根类型。（它们应该应用于类型参数和数组组件。）原因是可以根据赋给变量的值来*推断*变量是否可以是 `null`。例如：
+`@Nullable` 和 `@NonNull` 不应用于局部变量——至少不是它们的根类型。（它们应该应用于类型参数和数组组件。）原因是可以根据赋给变量的值来*推断*变量是否可以是 `null`。比如：
 
 ```java
 @NullMarked
@@ -273,7 +273,7 @@ public static <T> List<@Nullable T> nullOutMatches(List<T> list, T toRemove) {
 
 ## 一些更微妙的细节
 
-前面的章节涵盖了有效使用 JSpecify annotation 所需了解的 99% 的内容。这里我们将介绍一些你可能不需要知道的细节。
+前面的章节涵盖了有效使用 JSpecify annotation 所需了解的 99% 的内容。这里是一些你可能不需要知道的细节。
 
 ### 类型使用 annotation 语法
 
